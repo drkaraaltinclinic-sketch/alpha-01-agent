@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ALPHA-01 · Signal Agent</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07090f;--surface:#0b0f1c;--border:#16213a;--dim:#1e2d4a;--muted:#2e4060;
+  --soft:#4a6a8a;--mid:#6a8aaa;--bright:#9ab0cc;--white:#c8d8f0;--hi:#e2ecff;
+  --green:#27c97a;--red:#e05050;--amber:#e8a020;--blue:#4a90d9;
+  --purple:#8b5cf6;--teal:#1dc9a0;--cyan:#22d3ee;
+}
+body{background:var(--bg);color:var(--white);font-family:'SF Mono','Fira Code','Courier New',monospace;font-size:11px;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+
+.titlebar{background:#060810;border-bottom:1px solid var(--border);padding:9px 16px;display:flex;align-items:center;gap:10px;flex-shrink:0}
+.dots{display:flex;gap:6px}
+.dot{width:12px;height:12px;border-radius:50%}
+.agent-id{color:var(--soft);font-size:10px;letter-spacing:.1em;display:flex;align-items:center;gap:8px;flex:1;margin-left:6px}
+.badge{font-size:9px;padding:2px 8px;border-radius:3px;letter-spacing:.1em;font-weight:700}
+.b-live{background:rgba(39,201,122,.1);border:1px solid rgba(39,201,122,.25);color:var(--green)}
+.b-alpha{background:rgba(139,92,246,.1);border:1px solid rgba(139,92,246,.25);color:var(--purple)}
+.b-err{background:rgba(224,80,80,.1);border:1px solid rgba(224,80,80,.25);color:var(--red)}
+.b-warn{background:rgba(232,160,32,.1);border:1px solid rgba(232,160,32,.25);color:var(--amber)}
+#uptime{margin-left:auto;color:var(--muted);font-size:9px}
+
+.layout{display:grid;grid-template-columns:230px 1fr 220px;flex:1;overflow:hidden;min-height:0}
+.col{display:flex;flex-direction:column;overflow:hidden}
+.col-mid{border-left:1px solid var(--border);border-right:1px solid var(--border)}
+
+.phdr{background:#060810;border-bottom:1px solid var(--border);padding:6px 10px;display:flex;align-items:center;gap:6px;color:var(--soft);font-size:9px;letter-spacing:.12em;flex-shrink:0}
+.phdr i{font-size:13px}
+.phdr-pill{margin-left:auto;font-size:8px;padding:1px 6px;border-radius:2px;background:rgba(139,92,246,.1);color:var(--purple);border:1px solid rgba(139,92,246,.2)}
+
+.scroll{overflow-y:auto;flex:1}
+.scroll::-webkit-scrollbar{width:3px}
+.scroll::-webkit-scrollbar-thumb{background:var(--dim);border-radius:2px}
+
+/* Signal Cards */
+.sig-card{margin:7px;border-radius:6px;overflow:hidden;border:1px solid var(--border);transition:border-color .2s}
+.sig-card.LONG{border-color:rgba(39,201,122,.25)}
+.sig-card.SHORT{border-color:rgba(224,80,80,.25)}
+.sig-card.NEUTRAL{border-color:var(--dim)}
+.sig-hdr{padding:8px 10px;display:flex;align-items:center;gap:8px}
+.sig-dir{font-size:10px;padding:3px 10px;border-radius:3px;font-weight:700;letter-spacing:.08em}
+.dir-LONG{background:rgba(39,201,122,.15);color:var(--green);border:1px solid rgba(39,201,122,.3)}
+.dir-SHORT{background:rgba(224,80,80,.15);color:var(--red);border:1px solid rgba(224,80,80,.3)}
+.dir-NEUTRAL{background:rgba(74,144,217,.1);color:var(--blue);border:1px solid rgba(74,144,217,.2)}
+.sig-sym{color:var(--hi);font-size:12px;font-weight:700;flex:1}
+.sig-conf{font-size:10px;font-weight:700}
+.conf-bar-wrap{height:3px;background:var(--dim);margin:0 10px 8px;border-radius:2px}
+.conf-bar{height:100%;border-radius:2px;transition:width .4s}
+.sig-body{padding:0 10px 8px;display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.sig-row{display:flex;flex-direction:column;gap:2px}
+.sr-label{color:var(--muted);font-size:8px;letter-spacing:.08em}
+.sr-val{color:var(--bright);font-size:10px;font-weight:600}
+.sr-val.green{color:var(--green)}
+.sr-val.red{color:var(--red)}
+.sr-val.amber{color:var(--amber)}
+.sig-levels{padding:0 10px 8px;border-top:1px solid var(--dim);padding-top:8px;margin-top:2px}
+.level-row{display:flex;justify-content:space-between;margin-bottom:3px;font-size:9px}
+.lbl{color:var(--muted)}
+.lvl-entry{color:var(--blue)}
+.lvl-sl{color:var(--red)}
+.lvl-t1{color:#86efac}
+.lvl-t2{color:var(--green)}
+.lvl-t3{color:#4ade80}
+
+/* Indicators panel */
+.ind-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:8px}
+.ind-cell{background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:7px 8px}
+.ind-label{color:var(--muted);font-size:8px;letter-spacing:.1em;text-transform:uppercase}
+.ind-val{color:var(--bright);font-size:12px;font-weight:700;margin-top:3px}
+.ind-sub{font-size:8px;margin-top:1px}
+
+/* Event Bus */
+.ev{display:flex;gap:7px;align-items:flex-start;padding:4px 10px;border-bottom:1px solid #080c14;animation:slide .2s ease}
+@keyframes slide{from{opacity:0;transform:translateX(-5px)}to{opacity:1;transform:none}}
+.ev-ts{color:var(--muted);font-size:8px;flex-shrink:0;margin-top:1px;min-width:50px}
+.ev-tag{font-size:8px;padding:1px 5px;border-radius:2px;flex-shrink:0;letter-spacing:.07em;font-weight:700;min-width:52px;text-align:center}
+.ev-body{color:var(--bright);font-size:9px;line-height:1.5;flex:1;word-break:break-word}
+.ev-body b{color:var(--hi)}
+.t-long{background:rgba(39,201,122,.12);color:var(--green);border:1px solid rgba(39,201,122,.2)}
+.t-short{background:rgba(224,80,80,.12);color:var(--red);border:1px solid rgba(224,80,80,.2)}
+.t-hold{background:rgba(74,144,217,.12);color:var(--blue);border:1px solid rgba(74,144,217,.2)}
+.t-alert{background:rgba(232,160,32,.12);color:var(--amber);border:1px solid rgba(232,160,32,.2)}
+.t-sys{background:rgba(46,64,96,.3);color:var(--soft);border:1px solid var(--dim)}
+.t-ind{background:rgba(139,92,246,.12);color:var(--purple);border:1px solid rgba(139,92,246,.2)}
+
+/* Stats bar */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--border);flex-shrink:0}
+.stat-item{padding:7px 10px;border-right:1px solid var(--border);text-align:center}
+.stat-item:last-child{border-right:none}
+.stat-num{color:var(--hi);font-size:14px;font-weight:700}
+.stat-lbl{color:var(--muted);font-size:8px;margin-top:2px}
+
+/* Right panel — trade detail */
+.trade-detail{padding:10px;flex:1;overflow-y:auto}
+.td-section{margin-bottom:12px}
+.td-title{color:var(--soft);font-size:8px;letter-spacing:.12em;text-transform:uppercase;margin-bottom:6px;display:flex;align-items:center;gap:5px}
+.td-row{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #0a0e18;font-size:9px}
+.td-key{color:var(--muted)}
+.td-val{color:var(--bright);text-align:right;max-width:55%;word-break:break-word}
+.reason-item{font-size:9px;color:var(--bright);padding:3px 0;border-bottom:1px solid #0a0e18;line-height:1.4;display:flex;gap:5px}
+.reason-item::before{content:'▸';color:var(--green);flex-shrink:0}
+.warn-item{font-size:9px;color:var(--amber);padding:3px 0;border-bottom:1px solid #0a0e18;line-height:1.4;display:flex;gap:5px}
+.warn-item::before{content:'▸';color:var(--red);flex-shrink:0}
+
+.bottombar{background:#060810;border-top:1px solid var(--border);padding:6px 16px;display:flex;align-items:center;gap:10px;flex-shrink:0}
+.bb{font-size:9px;color:var(--muted);display:flex;align-items:center;gap:5px}
+.bb b{color:var(--soft)}
+.bb-sep{color:var(--dim)}
+.pulse{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.apilog{font-size:9px;color:var(--muted);height:24px;display:flex;align-items:center;padding:0 14px;border-top:1px solid var(--border);flex-shrink:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+
+.no-signals{padding:20px;text-align:center;color:var(--muted);font-size:10px;line-height:1.8}
+</style>
+</head>
+<body>
+
+<div class="titlebar">
+  <div class="dots">
+    <div class="dot" style="background:#ff5f57"></div>
+    <div class="dot" style="background:#febc2e"></div>
+    <div class="dot" style="background:#28c840"></div>
+  </div>
+  <div class="agent-id">
+    <span style="color:var(--soft)">agent://</span><span style="color:var(--purple)">ALPHA-01</span>
+    <span style="color:var(--dim)">—</span>
+    <span style="color:var(--muted)">Signal Generation · sub-agent of GECKO-01</span>
+    <span class="badge b-live" id="main-badge">CONNECTING</span>
+    <span class="badge b-alpha">TA ENGINE</span>
+  </div>
+  <span id="uptime">UP: 00:00:00</span>
+</div>
+
+<div class="layout">
+
+  <!-- LEFT: Signal Cards -->
+  <div class="col">
+    <div class="phdr"><i class="ti ti-trending-up"></i> LIVE SIGNALS <span class="phdr-pill" id="sig-count">0 signals</span></div>
+    <div class="scroll" id="signal-list">
+      <div class="no-signals">
+        <span class="pulse" style="margin-right:6px"></span>
+        Connecting to GECKO-01...<br>
+        Signals appear after first tick
+      </div>
+    </div>
+  </div>
+
+  <!-- CENTER: Indicators + Event Bus -->
+  <div class="col col-mid">
+    <div class="phdr"><i class="ti ti-chart-bar"></i> INDICATORS — <span id="ind-asset" style="color:var(--purple)">—</span></div>
+    <div class="ind-grid" id="ind-grid">
+      <div class="ind-cell"><div class="ind-label">RSI (14)</div><div class="ind-val" id="ind-rsi">—</div><div class="ind-sub" id="ind-rsi-sub" style="color:var(--muted)">—</div></div>
+      <div class="ind-cell"><div class="ind-label">MACD</div><div class="ind-val" id="ind-macd">—</div><div class="ind-sub" id="ind-macd-sub" style="color:var(--muted)">—</div></div>
+      <div class="ind-cell"><div class="ind-label">Bollinger %B</div><div class="ind-val" id="ind-bb">—</div><div class="ind-sub" id="ind-bb-sub" style="color:var(--muted)">—</div></div>
+      <div class="ind-cell"><div class="ind-label">Momentum</div><div class="ind-val" id="ind-mom">—</div><div class="ind-sub" id="ind-mom-sub" style="color:var(--muted)">—</div></div>
+      <div class="ind-cell"><div class="ind-label">EMA 9</div><div class="ind-val" id="ind-ema9">—</div><div class="ind-sub" id="ind-ema9-sub" style="color:var(--muted)">—</div></div>
+      <div class="ind-cell"><div class="ind-label">Volume</div><div class="ind-val" id="ind-vol">—</div><div class="ind-sub" id="ind-vol-sub" style="color:var(--muted)">—</div></div>
+    </div>
+
+    <div class="phdr" style="border-top:1px solid var(--border)"><i class="ti ti-satellite"></i> EVENT BUS <span class="phdr-pill" id="ev-count">0 events</span></div>
+    <div class="scroll" id="event-stream">
+      <div style="padding:12px 10px;color:var(--muted)">Waiting for GECKO-01 feed...</div>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-item"><div class="stat-num" id="st-signals">0</div><div class="stat-lbl">signals</div></div>
+      <div class="stat-item"><div class="stat-num" id="st-ticks">0</div><div class="stat-lbl">ticks processed</div></div>
+      <div class="stat-item"><div class="stat-num" id="st-alerts">0</div><div class="stat-lbl">alerts</div></div>
+      <div class="stat-item"><div class="stat-num" id="st-gecko" style="color:var(--red)">OFF</div><div class="stat-lbl">gecko feed</div></div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Trade Detail -->
+  <div class="col">
+    <div class="phdr"><i class="ti ti-target"></i> TRADE DETAIL</div>
+    <div class="trade-detail" id="trade-detail">
+      <div style="color:var(--muted);font-size:10px;padding:10px 0">Click a signal card to see full trade recommendation</div>
+    </div>
+  </div>
+
+</div>
+
+<div class="bottombar">
+  <div class="bb"><span class="pulse" id="bb-pulse"></span> <b id="bb-status">CONNECTING</b></div>
+  <span class="bb-sep">|</span>
+  <div class="bb">GECKO <b id="bb-gecko" style="color:var(--red)">OFFLINE</b></div>
+  <span class="bb-sep">|</span>
+  <div class="bb">SIGNALS <b id="bb-sigs">0</b></div>
+  <span class="bb-sep">|</span>
+  <div class="bb">THRESHOLD <b>55%</b></div>
+  <span class="bb-sep">|</span>
+  <div class="bb" style="margin-left:auto">ALPHA-01 v1.0.0 · Railway</div>
+</div>
+<div class="apilog" id="api-log">ws: connecting to ALPHA-01...</div>
+
+<script>
+let ws=null, reconnTimer=null;
+let signals={}, evTotal=0, sigTotal=0, tickTotal=0, alertTotal=0;
+let uptimeSec=0, selectedAsset=null;
+
+function ts(){return new Date().toLocaleTimeString('en-US',{hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'})}
+function fmt(n){if(!n&&n!==0)return '—';if(n>=1e9)return '$'+(n/1e9).toFixed(2)+'B';if(n>=1e6)return '$'+(n/1e6).toFixed(2)+'M';if(n>=1e3)return '$'+Number(n.toFixed(2)).toLocaleString();if(n<1&&n>0)return '$'+n.toFixed(6);return '$'+n.toFixed(2);}
+function fmtP(n){return (n>=0?'+':'')+n.toFixed(2)+'%'}
+
+function pushEvent(type,tagClass,body){
+  const s=document.getElementById('event-stream');
+  if(s.children.length===1&&!s.children[0].className.includes('ev'))s.innerHTML='';
+  const d=document.createElement('div');d.className='ev';
+  d.innerHTML=`<span class="ev-ts">${ts()}</span><span class="ev-tag ${tagClass}">${type}</span><span class="ev-body">${body}</span>`;
+  s.insertBefore(d,s.firstChild);
+  if(s.children.length>80)s.removeChild(s.lastChild);
+  evTotal++;document.getElementById('ev-count').textContent=evTotal+' events';
+}
+
+function renderSignalCards(){
+  const el=document.getElementById('signal-list');
+  const sigs=Object.values(signals).sort((a,b)=>Math.abs(b.confidence-50)-Math.abs(a.confidence-50));
+  if(!sigs.length){el.innerHTML='<div class="no-signals"><span class="pulse" style="margin-right:6px"></span>Waiting for signals...</div>';return;}
+  el.innerHTML='';
+  sigs.forEach(sig=>{
+    const card=document.createElement('div');
+    card.className=`sig-card ${sig.direction}`;
+    card.style.cursor='pointer';
+    card.onclick=()=>showTradeDetail(sig);
+    const confColor=sig.direction==='LONG'?'var(--green)':sig.direction==='SHORT'?'var(--red)':'var(--blue)';
+    card.innerHTML=`
+      <div class="sig-hdr" style="background:#0b0f1c">
+        <span class="sig-dir dir-${sig.direction}">${sig.label}</span>
+        <span class="sig-sym">${sig.symbol}</span>
+        <span class="sig-conf" style="color:${confColor}">${sig.confidence}%</span>
+      </div>
+      <div class="conf-bar-wrap"><div class="conf-bar" style="width:${sig.confidence}%;background:${confColor}"></div></div>
+      <div class="sig-body">
+        <div class="sig-row"><span class="sr-label">ENTRY</span><span class="sr-val">${fmt(sig.entry)}</span></div>
+        <div class="sig-row"><span class="sr-label">STOP LOSS</span><span class="sr-val red">${fmt(sig.stopLoss)}</span></div>
+        <div class="sig-row"><span class="sr-label">TARGET 1</span><span class="sr-val green">${fmt(sig.target1)}</span></div>
+        <div class="sig-row"><span class="sr-label">R:R RATIO</span><span class="sr-val amber">${sig.riskReward}:1</span></div>
+        <div class="sig-row"><span class="sr-label">POSITION</span><span class="sr-val">${sig.positionSize}%</span></div>
+        <div class="sig-row"><span class="sr-label">RSI</span><span class="sr-val">${sig.indicators?.rsi||'—'}</span></div>
+      </div>`;
+    el.appendChild(card);
+  });
+  document.getElementById('sig-count').textContent=sigs.length+' signals';
+}
+
+function showTradeDetail(sig){
+  selectedAsset=sig.asset;
+  updateIndicators(sig);
+  const el=document.getElementById('trade-detail');
+  const dirColor=sig.direction==='LONG'?'var(--green)':sig.direction==='SHORT'?'var(--red)':'var(--blue)';
+  el.innerHTML=`
+    <div class="td-section">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+        <span style="font-size:16px;font-weight:800;color:var(--hi)">${sig.symbol}</span>
+        <span class="sig-dir dir-${sig.direction}">${sig.label}</span>
+        <span style="font-size:13px;font-weight:700;color:${dirColor};margin-left:auto">${sig.confidence}%</span>
+      </div>
+      <div class="conf-bar-wrap" style="margin:0 0 10px"><div class="conf-bar" style="width:${sig.confidence}%;background:${dirColor}"></div></div>
+    </div>
+
+    <div class="td-section">
+      <div class="td-title"><i class="ti ti-target" style="font-size:12px"></i> TRADE LEVELS</div>
+      <div class="td-row"><span class="td-key">Entry</span><span class="td-val lvl-entry">${fmt(sig.entry)}</span></div>
+      <div class="td-row"><span class="td-key">Stop Loss</span><span class="td-val lvl-sl">${fmt(sig.stopLoss)}</span></div>
+      <div class="td-row"><span class="td-key">Target 1</span><span class="td-val lvl-t1">${fmt(sig.target1)}</span></div>
+      <div class="td-row"><span class="td-key">Target 2</span><span class="td-val lvl-t2">${fmt(sig.target2)}</span></div>
+      <div class="td-row"><span class="td-key">Target 3</span><span class="td-val lvl-t3">${fmt(sig.target3)}</span></div>
+      <div class="td-row"><span class="td-key">Risk:Reward</span><span class="td-val" style="color:var(--amber)">${sig.riskReward}:1</span></div>
+      <div class="td-row"><span class="td-key">Position Size</span><span class="td-val" style="color:var(--cyan)">${sig.positionSize}% of portfolio</span></div>
+    </div>
+
+    <div class="td-section">
+      <div class="td-title"><i class="ti ti-check" style="font-size:12px"></i> BULL CASE (${sig.reasons?.length||0})</div>
+      ${(sig.reasons||[]).map(r=>`<div class="reason-item">${r}</div>`).join('')||'<div style="color:var(--muted);font-size:9px">No bullish signals</div>'}
+    </div>
+
+    <div class="td-section">
+      <div class="td-title"><i class="ti ti-alert-triangle" style="font-size:12px"></i> BEAR CASE / RISKS (${sig.warnings?.length||0})</div>
+      ${(sig.warnings||[]).map(w=>`<div class="warn-item">${w}</div>`).join('')||'<div style="color:var(--muted);font-size:9px">No warnings</div>'}
+    </div>
+
+    <div class="td-section">
+      <div class="td-title"><i class="ti ti-clock" style="font-size:12px"></i> SIGNAL META</div>
+      <div class="td-row"><span class="td-key">Asset</span><span class="td-val">${sig.asset}</span></div>
+      <div class="td-row"><span class="td-key">24h Change</span><span class="td-val" style="color:${(sig.change_24h||0)>=0?'var(--green)':'var(--red)'}">${sig.change_24h?fmtP(sig.change_24h):'—'}</span></div>
+      <div class="td-row"><span class="td-key">Generated</span><span class="td-val">${sig.timestamp?new Date(sig.timestamp).toLocaleTimeString():ts()}</span></div>
+    </div>`;
+}
+
+function updateIndicators(sig){
+  if(!sig?.indicators) return;
+  const ind=sig.indicators;
+  document.getElementById('ind-asset').textContent=sig.symbol||'—';
+
+  if(ind.rsi!==null&&ind.rsi!==undefined){
+    const rsiEl=document.getElementById('ind-rsi');
+    rsiEl.textContent=ind.rsi.toFixed(1);
+    rsiEl.style.color=ind.rsi<30?'var(--green)':ind.rsi>70?'var(--red)':'var(--bright)';
+    document.getElementById('ind-rsi-sub').textContent=ind.rsi<30?'OVERSOLD':ind.rsi>70?'OVERBOUGHT':'NEUTRAL';
+    document.getElementById('ind-rsi-sub').style.color=ind.rsi<30?'var(--green)':ind.rsi>70?'var(--red)':'var(--muted)';
+  }
+  if(ind.macd){
+    const macdEl=document.getElementById('ind-macd');
+    macdEl.textContent=ind.macd.line.toFixed(4);
+    macdEl.style.color=ind.macd.line>0?'var(--green)':'var(--red)';
+    document.getElementById('ind-macd-sub').textContent=`hist: ${ind.macd.histogram.toFixed(4)}`;
+    document.getElementById('ind-macd-sub').style.color=ind.macd.histogram>0?'var(--green)':'var(--red)';
+  }
+  if(ind.bollinger){
+    const bbEl=document.getElementById('ind-bb');
+    const pB=ind.bollinger.percentB;
+    bbEl.textContent=(pB*100).toFixed(1)+'%';
+    bbEl.style.color=pB<0.2?'var(--green)':pB>0.8?'var(--red)':'var(--bright)';
+    document.getElementById('ind-bb-sub').textContent=pB<0.2?'NEAR LOWER BAND':pB>0.8?'NEAR UPPER BAND':'MID BAND';
+  }
+  if(ind.momentum!==null&&ind.momentum!==undefined){
+    const momEl=document.getElementById('ind-mom');
+    momEl.textContent=fmtP(ind.momentum);
+    momEl.style.color=ind.momentum>0?'var(--green)':'var(--red)';
+    document.getElementById('ind-mom-sub').textContent=Math.abs(ind.momentum)>5?'STRONG':'MODERATE';
+  }
+  if(ind.ema9){
+    document.getElementById('ind-ema9').textContent=fmt(ind.ema9);
+    document.getElementById('ind-ema9-sub').textContent=ind.ema21?`EMA21: ${fmt(ind.ema21)}`:'—';
+  }
+  if(ind.volume){
+    const volEl=document.getElementById('ind-vol');
+    volEl.textContent=ind.volume.label;
+    volEl.style.color=ind.volume.spike?'var(--amber)':ind.volume.elevated?'var(--green)':ind.volume.low?'var(--red)':'var(--bright)';
+    document.getElementById('ind-vol-sub').textContent=`${ind.volume.ratio.toFixed(2)}x avg`;
+  }
+}
+
+function handleEvent(ev){
+  const d=ev.data;
+  switch(ev.topic){
+    case 'alpha.signal':
+      signals[d.asset]=d;
+      sigTotal++;
+      document.getElementById('st-signals').textContent=sigTotal;
+      document.getElementById('bb-sigs').textContent=sigTotal;
+      const tagClass=d.direction==='LONG'?'t-long':d.direction==='SHORT'?'t-short':'t-hold';
+      pushEvent(d.label,tagClass,`<b>${d.symbol}</b> ${fmt(d.price)} · conf <b>${d.confidence}%</b> · entry ${fmt(d.entry)} · SL ${fmt(d.stopLoss)} · T2 ${fmt(d.target2)} · R:R ${d.riskReward}:1`);
+      renderSignalCards();
+      if(selectedAsset===d.asset) showTradeDetail(d);
+      break;
+    case 'alpha.indicators':
+      tickTotal++;
+      document.getElementById('st-ticks').textContent=tickTotal;
+      if(!selectedAsset&&d.asset) {selectedAsset=d.asset;updateIndicators(signals[d.asset]||{symbol:d.symbol,indicators:d.indicators});}
+      if(selectedAsset===d.asset) updateIndicators(signals[d.asset]||{symbol:d.symbol,indicators:d.indicators});
+      break;
+    case 'alpha.alert':
+      alertTotal++;
+      document.getElementById('st-alerts').textContent=alertTotal;
+      pushEvent('ALERT','t-alert',`[${d.severity}] <b>${d.asset?.toUpperCase()}</b> ${d.type} → ${d.action}`);
+      break;
+    case 'alpha.ready':
+      pushEvent('SYS','t-sys',`<b>ALPHA-01</b> signal engine ready — seeded from GECKO snapshot`);
+      break;
+    case 'alpha.gecko.connected':
+      document.getElementById('bb-gecko').textContent='LIVE';
+      document.getElementById('bb-gecko').style.color='var(--green)';
+      document.getElementById('st-gecko').textContent='ON';
+      document.getElementById('st-gecko').style.color='var(--green)';
+      pushEvent('SYS','t-sys','GECKO-01 feed connected — receiving price ticks');
+      break;
+    case 'alpha.gecko.disconnected':
+      document.getElementById('bb-gecko').textContent='OFFLINE';
+      document.getElementById('bb-gecko').style.color='var(--red)';
+      document.getElementById('st-gecko').textContent='OFF';
+      document.getElementById('st-gecko').style.color='var(--red)';
+      pushEvent('SYS','t-sys','GECKO-01 disconnected — reconnecting...');
+      break;
+    case 'alpha.handshake':
+      pushEvent('SYS','t-sys',`Connected to <b>ALPHA-01</b> — ${d.signalCount} signals in session`);
+      if(d.lastSignals){Object.assign(signals,d.lastSignals);renderSignalCards();}
+      setStatus('LIVE','var(--green)');
+      document.getElementById('api-log').textContent=`ws: connected to ALPHA-01 signal engine · ${ts()}`;
+      break;
+    case 'alpha.cycle.complete':
+      pushEvent('SYS','t-sys',`Cycle complete — <b>${d.signalsGenerated}</b> signals generated · ${d.activeSignals} active`);
+      break;
+  }
+}
+
+function setStatus(txt,col){
+  const b=document.getElementById('main-badge');
+  b.textContent=txt;b.className='badge '+(txt==='LIVE'?'b-live':txt.includes('ERR')?'b-err':'b-warn');
+  document.getElementById('bb-status').textContent=txt;
+  document.getElementById('bb-pulse').style.background=col;
+}
+
+function connect(){
+  const proto=location.protocol==='https:'?'wss':'ws';
+  ws=new WebSocket(`${proto}://${location.host}/?agent=DASHBOARD`);
+  ws.onopen=()=>{setStatus('LIVE','var(--green)');document.getElementById('api-log').textContent=`ws: connected · ${ts()}`;};
+  ws.onmessage=(e)=>{try{handleEvent(JSON.parse(e.data));}catch(err){console.warn(err);}};
+  ws.onclose=()=>{setStatus('RECONNECTING','var(--amber)');reconnTimer=setTimeout(connect,4000);};
+  ws.onerror=()=>setStatus('ERROR','var(--red)');
+  setInterval(()=>{if(ws?.readyState===1)ws.send(JSON.stringify({type:'PING'}));},20000);
+}
+
+setInterval(()=>{
+  uptimeSec++;
+  const h=Math.floor(uptimeSec/3600).toString().padStart(2,'0');
+  const m=Math.floor((uptimeSec%3600)/60).toString().padStart(2,'0');
+  const s=(uptimeSec%60).toString().padStart(2,'0');
+  document.getElementById('uptime').textContent=`UP: ${h}:${m}:${s}`;
+},1000);
+
+connect();
+</script>
+</body>
+</html>
