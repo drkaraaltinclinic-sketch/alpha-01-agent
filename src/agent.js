@@ -533,6 +533,22 @@ function connectToGecko() {
       geckoWs.send(JSON.stringify({ type: 'PING' }));
     }
   }, 20000);
+
+  // Report live stats to GECKO-01 every 15s so its Agent Network panel shows real numbers
+  setInterval(() => {
+    if (geckoWs?.readyState === WebSocket.OPEN) {
+      geckoWs.send(JSON.stringify({
+        type: 'STATUS',
+        agentId: 'ALPHA-01',
+        stats: {
+          signals: state.signalCount,
+          ticks:   state.tickCount,
+          alerts:  state.alertCount,
+          mode:    'active',
+        },
+      }));
+    }
+  }, 15000);
 }
 
 // ─── Dashboard WebSocket (for browser clients) ────────────────────────────────
