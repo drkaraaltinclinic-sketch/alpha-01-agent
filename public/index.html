@@ -383,6 +383,13 @@ function handleEvent(ev){
       if(d.lastSignals){Object.assign(signals,d.lastSignals);renderSignalCards();}
       setStatus('LIVE','var(--green)');
       document.getElementById('api-log').textContent=`ws: connected to ALPHA-01 signal engine · ${ts()}`;
+      // Set GECKO status from handshake
+      if(d.geckoConnected){
+        document.getElementById('bb-gecko').textContent='LIVE';
+        document.getElementById('bb-gecko').style.color='var(--green)';
+        document.getElementById('st-gecko').textContent='ON';
+        document.getElementById('st-gecko').style.color='var(--green)';
+      }
       break;
     case 'alpha.cycle.complete':
       pushEvent('SYS','t-sys',`Cycle complete — <b>${d.signalsGenerated}</b> signals generated · ${d.activeSignals} active`);
